@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+# ---------------------------------------------------------------------------------
+# Mirec -  Minimalist Recorder CLI
+# Author:  Lukas Grumlik - Rakosn1cek
+# Created: 2026-04-22
+# Version: 0.1.0
+# Descriptions: 
+# A VA-API powered screen recorder for fanless systems to save it from overheating.
+# Dependencies: wf-recorder, slurp, fzf, libnotify
+# ---------------------------------------------------------------------------------
+
+# Configuration
+SAVE_DIR="$HOME/Videos/Recordings"
+PID_FILE="/tmp/mirec.pid"
+mkdir -p "$SAVE_DIR"
+
+# 1. STOP LOGIC
+if pgrep -x "wf-recorder" > /dev/null; then
+    killall -SIGINT wf-recorder
+    rm -f "$PID_FILE"
+    notify-send -t 1500 "Mirec" "Recording Stopped & Saved"
+    exit 0
+fi
+# 2. SELECTION TUI (fzf)
+HEADER_TEXT="
+                  MIREC v0.1.0
+           Minimalist Recording CLI
+"
+OPTS=$(echo -e "Area\nFullscreen\nArea + Audio\nFullscreen + Audio" | fzf --header="$HEADER_TEXT" --header-first --reverse)
+
+# Exit if no option is selected
+[ -z "$OPTS" ] && exit 1
+
+# 3. FILENAME INPUT
+RAW_INPUT=$(echo "" | fzf --print-query --header="Enter filename (Enter for timestamp):")
+FILENAME=$(echo "$RAW_INPUT" | tail -n1 | tr -d '\n')
+[ -z "$FILENAME" ] && FILENAME="rec_$(date +%Y%m%d_%H%M%S)"
+[[ "$FILENAME" != *.mp4 ]] && FILENAME="$FILENAME.mp4"
+
+# 4. LOGIC ENGINE (Parsing the options)
+ARG_GEOM=""
+ARG_AUDIO=""
+
+# Handle Geometry
+if [[ "$OPTS" == *"Area"* ]]; then
+    ARG_GEOM=$(slurp) || exit 1
+fi
+
+# Handle Audio (Using default Pipewire/Pulse source)
+if [[ "$OPTS" == *"Audio"* ]]; then
+    # We use pulse for broad compatibility
+    ARG_AUDIO="--audio"
+fi
+
+# 5. START DELAY
+sleep 2
+
+# 6. EXECUTION
+nohup wf-recorder \
+    ${ARG_GEOM:+-g "$ARG_GEOM"} \
+    $ARG_AUDIO \
+    --codec h264_vaapi \cl
+    -p "qp=15" \
+    -d /dev/dri/renderD128 \
+    -f "$SAVE_DIR/$FILENAME" > /tmp/mirec.log 2>&1 &
+
+echo $! > "$PID_FILE"
+notify-send -t 500 "Mirec" "Recording started: $OPTS"
