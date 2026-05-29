@@ -4,7 +4,7 @@
 # Mirec -  Minimalist Recorder CLI
 # Author:  Lukas Grumlik - Rakosn1cek
 # Created: 2026-04-22
-# Version: 0.1.0
+# Version: 0.2.0
 # Descriptions: 
 # A VA-API powered screen recorder for fanless systems to save it from overheating.
 # Dependencies: wf-recorder, slurp, fzf, libnotify
@@ -19,22 +19,24 @@ mkdir -p "$SAVE_DIR"
 if pgrep -x "wf-recorder" > /dev/null; then
     killall -SIGINT wf-recorder
     rm -f "$PID_FILE"
-    notify-send -t 1500 "Mirec" "Recording Stopped & Saved"
+    notify-send -t 2000 "Mirec" "Recording Stopped & Saved"
     exit 0
 fi
+
 # 2. SELECTION TUI (fzf)
 HEADER_TEXT="
-                  MIREC v0.1.0
+                  MIREC v0.2.0
            Minimalist Recording CLI
 "
-OPTS=$(echo -e "Area\nFullscreen\nArea + Audio\nFullscreen + Audio" | fzf --header="$HEADER_TEXT" --header-first --reverse)
+# Combine targets and presets into a single interactive layout
+OPTS=$(echo -e "Area (High Quality)\nArea (Low Bitrate)\nArea (720p Scaling)\nFullscreen (High Quality)\nFullscreen (Low Bitrate)\nFullscreen (720p Scaling)\nArea + Audio\nFullscreen + Audio" | fzf --header="$HEADER_TEXT" --header-first --reverse)
 
 # Exit if no option is selected
 [ -z "$OPTS" ] && exit 1
 
 # 3. FILENAME INPUT
 HEADER_TEXT="
-                  MIREC v0.1.0
+                  MIREC v0.2.0
            Minimalist Recording CLI
            
            
@@ -48,15 +50,27 @@ FILENAME=$(echo "$RAW_INPUT" | tail -n1 | tr -d '\n')
 # 4. LOGIC ENGINE (Parsing the options)
 ARG_GEOM=""
 ARG_AUDIO=""
+ARG_PARAM="-p"
+ARG_VAL="qp=24"
+ARG_FILTER=""
 
-# Handle Geometry
+# Geometry
 if [[ "$OPTS" == *"Area"* ]]; then
     ARG_GEOM=$(slurp) || exit 1
 fi
 
-# Handle Audio (Using default Pipewire/Pulse source)
+# Audio (Using default Pipewire/Pulse source)
 if [[ "$OPTS" == *"Audio"* ]]; then
     ARG_AUDIO="--audio"
+fi
+
+# Presets for both Area and Fullscreen targets
+if [[ "$OPTS" == *"Low Bitrate"* ]]; then
+    ARG_PARAM="-p"
+    ARG_VAL="max_rate=12000000"
+elif [[ "$OPTS" == *"720p Scaling"* ]]; then
+    ARG_PARAM="-p"
+    ARG_FILTER="-F scale_vaapi=w=1280:h=-2:format=nv12"
 fi
 
 # 5. START DELAY
@@ -67,9 +81,10 @@ nohup wf-recorder \
     ${ARG_GEOM:+-g "$ARG_GEOM"} \
     $ARG_AUDIO \
     --codec h264_vaapi \
-    -p "qp=15" \
+    $ARG_PARAM "$ARG_VAL" \
+    ${ARG_FILTER:+$ARG_FILTER} \
     -d /dev/dri/renderD128 \
-    -f "$SAVE_DIR/$FILENAME" >/dev/null 2>&1 &
+    -f "$SAVE_DIR/$FILENAME" < /dev/null >/dev/null 2>&1 &
 
 echo $! > "$PID_FILE"
 notify-send -t 500 "Mirec" "Recording started: $OPTS"

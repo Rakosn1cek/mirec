@@ -1,5 +1,6 @@
 # MIREC (Minimalist Recorder)
-[v0.1.0]
+
+[v0.2.0]
 
 I created this for my fanless m3 laptop. Heavy GUI recording apps like OBS or even some "lightweight" GTK wrappers were pushing my temps high enough to trigger thermal throttling. I needed something that stayed out of the way, used zero resources when idle, and offloaded everything to the Intel VA-API hardware. 
 I don't think it's perfect, but it suits my needs for screen recording at the moment.
