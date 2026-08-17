@@ -21,7 +21,7 @@ MIREC is a minimalist TUI wrapper for `wf-recorder` designed for Wayland (Hyprla
 **Installation**
 
 ```zsh
-git clone https://github.com/Rakosn1cek/mirec.git
+git clone https://codeberg.org/Rakosn1cek/mirec.git
 cd mirec
 chmod +x mirec
 ```
