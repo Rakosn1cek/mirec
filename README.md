@@ -1,3 +1,7 @@
+> [!NOTE]
+> **This project has moved to Codeberg.**  
+> Active development, issues, and releases are now hosted at [codeberg.org/Rakosn1cek/mirec](https://codeberg.org/Rakosn1cek/mirec).
+
 # MIREC (Minimalist Recorder)
 
 [v0.2.0]
